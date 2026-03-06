@@ -565,8 +565,8 @@ def validate_contrat_structure(root, r, find_all, find_first):
                 lct = find_in_subtree(lcr[0], 'LocalContractType')
                 if lct:
                     lct_val = get_text(lct[0])
-                    if lct_val not in ['DDF', 'DDE', 'DMF', 'DME']:
-                        r.error(f"{prefix} : LocalContractType='{lct_val}' invalide (DDF/DDE/DMF/DME)")
+                    if not re.match(r'^(DDF|DDE|DMF|DME)', lct_val or ''):
+                        r.error(f"{prefix} : LocalContractType='{lct_val}' invalide (DDF/DDE/DMF/DME attendu en préfixe)")
                     else:
                         r.success(f"{prefix} : LocalContractType='{lct_val}' ✓")
                 recourse = find_in_subtree(lcr[0], 'RecourseType') or find_in_subtree(lcr[0], 'Code')
