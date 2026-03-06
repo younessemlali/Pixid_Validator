@@ -282,6 +282,31 @@ def auto_fix_xml(content_bytes):
     except Exception as e:
         return content_bytes, [f"Impossible de réparer le XML : {e}"]
 
+    # 0. Corriger les balises non fermées AVANT parsing lxml
+    # Pattern : <Tag>valeur<Tag> → <Tag>valeur</Tag> (ajout slash uniquement, ligne inchangée)
+    import re as _re
+    text_raw = content_bytes.decode('iso-8859-1', errors='replace')
+    def fix_unclosed_tags(txt):
+        fixes_local = []
+        # Matche <Tag(attrs)>valeur<Tag> avec > optionnel en fin de ligne
+        pattern = _re.compile(r'<([A-Za-z][A-Za-z0-9]*)([^>]*)>([^<]+)<([A-Za-z][A-Za-z0-9]*)>?$', _re.MULTILINE)
+        def replacer(m):
+            t1, attrs, val, t2 = m.group(1), m.group(2), m.group(3), m.group(4)
+            if t1 == t2:
+                fixes_local.append(f"Balise non fermee corrigee : <{t1}>{val.strip()}<{t1}> devient <{t1}>{val.strip()}</{t1}>")
+                return f'<{t1}{attrs}>{val}</{t1}>'
+            return m.group(0)
+        result = pattern.sub(replacer, txt)
+        return result, fixes_local
+    text_raw, unclosed_fixes = fix_unclosed_tags(text_raw)
+    if unclosed_fixes:
+        fixes.extend(unclosed_fixes)
+        content_bytes = text_raw.encode('iso-8859-1', errors='replace')
+
+
+
+
+
     # Travailler sur l'arbre lxml
     ns_map = {'hr': 'http://ns.hr-xml.org/2004-08-02'}
 
@@ -325,18 +350,22 @@ def auto_fix_xml(content_bytes):
             cv_elem.text = val.zfill(2)
             fixes.append(f"ContractVersion reformaté : '{old}' → '{val.zfill(2)}'")
 
-    # 6. StaffingShift — ajouter shiftPeriod="weekly" si absent
+    # 6. StaffingShift — corriger shiftPeriod si absent ou incorrect
     for shift in lxml_find_all(tree, 'StaffingShift'):
-        if not shift.get('shiftPeriod'):
+        sp = shift.get('shiftPeriod', '')
+        if sp != 'weekly':
+            old_val = sp or '(absent)'
             shift.set('shiftPeriod', 'weekly')
-            fixes.append("shiftPeriod='weekly' ajouté sur StaffingShift")
+            fixes.append(f"shiftPeriod corrige : '{old_val}' -> 'weekly' sur StaffingShift")
 
-    # 7. StaffingShift/Id — ajouter idOwner="EXT0" si absent
+    # 7. StaffingShift/Id — corriger idOwner si absent ou different de EXT0
     for shift in lxml_find_all(tree, 'StaffingShift'):
         for id_elem in lxml_find_all(shift, 'Id'):
-            if not id_elem.get('idOwner'):
+            owner = id_elem.get('idOwner', '')
+            if owner != 'EXT0':
+                old_val = owner or '(absent)'
                 id_elem.set('idOwner', 'EXT0')
-                fixes.append("idOwner='EXT0' ajouté sur StaffingShift/Id")
+                fixes.append(f"idOwner corrige : '{old_val}' -> 'EXT0' sur StaffingShift/Id")
 
     # 8. BillingMultiplier — ajouter percentIndicator="true" si absent
     for bm in lxml_find_all(tree, 'BillingMultiplier'):
