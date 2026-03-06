@@ -273,7 +273,7 @@ def auto_fix_xml(content_bytes):
     # <Tag>valeur<Tag> → <Tag>valeur</Tag>
     import re as _re
     text_raw = content_bytes.decode('iso-8859-1', errors='replace')
-    _pattern_unclosed = _re.compile(r'<([A-Za-z][A-Za-z0-9]*)([^>]*)>([^<]+)<([A-Za-z][A-Za-z0-9]*)>?$', _re.MULTILINE)
+    _pattern_unclosed = _re.compile(r'<([A-Za-z][A-Za-z0-9]*)([^>]*)>([^<]+)<([A-Za-z][A-Za-z0-9]*)>?\r?$', _re.MULTILINE)
     def _replacer_unclosed(m):
         t1, attrs, val, t2 = m.group(1), m.group(2), m.group(3), m.group(4)
         if t1 == t2:
