@@ -965,9 +965,14 @@ if uploaded:
             fixed_bytes, fixes_applied = auto_fix_xml(content_bytes)
             try:
                 fixed_root = ET.fromstring(fixed_bytes.decode('iso-8859-1', errors='replace'))
+                # Mettre à jour root et content_bytes avec la version corrigée
+                root = fixed_root
+                content_bytes = fixed_bytes
             except:
                 try:
                     fixed_root = ET.fromstring(fixed_bytes.decode('utf-8', errors='replace'))
+                    root = fixed_root
+                    content_bytes = fixed_bytes
                 except:
                     fixed_root = None
 
