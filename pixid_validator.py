@@ -981,8 +981,8 @@ if uploaded:
             # Diff avant / après
             with st.expander("📋 Diff avant / après", expanded=True):
                 try:
-                    before_str = pretty_xml(root) if root else content_bytes.decode('iso-8859-1', errors='replace')
-                    after_str = pretty_xml(fixed_root) if fixed_root else fixed_bytes.decode('iso-8859-1', errors='replace')
+                    before_str = pretty_xml(root) if root is not None else content_bytes.decode('iso-8859-1', errors='replace')
+                    after_str = pretty_xml(fixed_root) if fixed_root is not None else fixed_bytes.decode('iso-8859-1', errors='replace')
                     render_diff(before_str, after_str)
                 except Exception as e:
                     st.warning(f"Impossible d'afficher le diff : {e}")
