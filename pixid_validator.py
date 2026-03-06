@@ -269,7 +269,22 @@ def auto_fix_xml(content_bytes):
     """
     fixes = []
 
-    # 1. Réparer XML mal formé avec lxml recover
+    # ÉTAPE 1 : Corriger les balises non fermées en string AVANT tout parsing
+    # <Tag>valeur<Tag> → <Tag>valeur</Tag>
+    import re as _re
+    text_raw = content_bytes.decode('iso-8859-1', errors='replace')
+    _pattern_unclosed = _re.compile(r'<([A-Za-z][A-Za-z0-9]*)([^>]*)>([^<]+)<([A-Za-z][A-Za-z0-9]*)>?$', _re.MULTILINE)
+    def _replacer_unclosed(m):
+        t1, attrs, val, t2 = m.group(1), m.group(2), m.group(3), m.group(4)
+        if t1 == t2:
+            fixes.append(f"Balise non fermee corrigee : <{t1}>{val.strip()}<{t1}> devient <{t1}>{val.strip()}</{t1}>")
+            return f'<{t1}{attrs}>{val}</{t1}>'
+        return m.group(0)
+    text_raw = _pattern_unclosed.sub(_replacer_unclosed, text_raw)
+    content_bytes = text_raw.encode('iso-8859-1', errors='replace')
+
+    # ÉTAPE 2 : Parser et corriger via lxml
+    # 2. Réparer XML mal formé avec lxml recover
     try:
         parser = etree.XMLParser(recover=True, encoding='iso-8859-1')
         tree = etree.fromstring(content_bytes, parser)
@@ -281,27 +296,6 @@ def auto_fix_xml(content_bytes):
             fixes.append("XML mal formé réparé (balises non fermées / mal imbriquées)")
     except Exception as e:
         return content_bytes, [f"Impossible de réparer le XML : {e}"]
-
-    # 0. Corriger les balises non fermées AVANT parsing lxml
-    # Pattern : <Tag>valeur<Tag> → <Tag>valeur</Tag> (ajout slash uniquement, ligne inchangée)
-    import re as _re
-    text_raw = content_bytes.decode('iso-8859-1', errors='replace')
-    def fix_unclosed_tags(txt):
-        fixes_local = []
-        # Matche <Tag(attrs)>valeur<Tag> avec > optionnel en fin de ligne
-        pattern = _re.compile(r'<([A-Za-z][A-Za-z0-9]*)([^>]*)>([^<]+)<([A-Za-z][A-Za-z0-9]*)>?$', _re.MULTILINE)
-        def replacer(m):
-            t1, attrs, val, t2 = m.group(1), m.group(2), m.group(3), m.group(4)
-            if t1 == t2:
-                fixes_local.append(f"Balise non fermee corrigee : <{t1}>{val.strip()}<{t1}> devient <{t1}>{val.strip()}</{t1}>")
-                return f'<{t1}{attrs}>{val}</{t1}>'
-            return m.group(0)
-        result = pattern.sub(replacer, txt)
-        return result, fixes_local
-    text_raw, unclosed_fixes = fix_unclosed_tags(text_raw)
-    if unclosed_fixes:
-        fixes.extend(unclosed_fixes)
-        content_bytes = text_raw.encode('iso-8859-1', errors='replace')
 
 
 
