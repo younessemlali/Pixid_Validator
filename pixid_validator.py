@@ -344,29 +344,20 @@ def auto_fix_xml(content_bytes):
             cv_elem.text = val.zfill(2)
             fixes.append(f"ContractVersion reformaté : '{old}' → '{val.zfill(2)}'")
 
-    # 6. StaffingShift — corriger shiftPeriod si absent ou incorrect
+    # 6. StaffingShift — ajouter shiftPeriod='weekly' seulement si absent
     for shift in lxml_find_all(tree, 'StaffingShift'):
-        sp = shift.get('shiftPeriod', '')
-        if sp != 'weekly':
-            old_val = sp or '(absent)'
+        if not shift.get('shiftPeriod'):
             shift.set('shiftPeriod', 'weekly')
-            fixes.append(f"shiftPeriod corrige : '{old_val}' -> 'weekly' sur StaffingShift")
+            fixes.append("shiftPeriod='weekly' ajoute sur StaffingShift (absent)")
 
-    # 7. StaffingShift/Id — corriger idOwner si absent ou different de EXT0
+    # 7. StaffingShift/Id — ajouter idOwner='EXT0' seulement si absent
     for shift in lxml_find_all(tree, 'StaffingShift'):
         for id_elem in lxml_find_all(shift, 'Id'):
-            owner = id_elem.get('idOwner', '')
-            if owner != 'EXT0':
-                old_val = owner or '(absent)'
+            if not id_elem.get('idOwner'):
                 id_elem.set('idOwner', 'EXT0')
-                fixes.append(f"idOwner corrige : '{old_val}' -> 'EXT0' sur StaffingShift/Id")
+                fixes.append("idOwner='EXT0' ajoute sur StaffingShift/Id (absent)")
 
-    # 8. BillingMultiplier — ajouter percentIndicator="true" si absent
-    for bm in lxml_find_all(tree, 'BillingMultiplier'):
-        if bm.get('percentIndicator') != 'true':
-            bm.set('percentIndicator', 'true')
-            fixes.append("percentIndicator='true' ajouté sur BillingMultiplier")
-
+    # 8. BillingMultiplier — non bloquant, pas de correction automatique
     # 9. PositionStatus — séparer Code fusionné avec Description
     for ps in lxml_find_all(tree, 'PositionStatus'):
         for code_elem in lxml_find_all(ps, 'Code'):
@@ -673,7 +664,7 @@ def validate_single_contract(assignment, index):
             lct_elems = find_in_subtree(lcr[0], 'LocalContractType')
             if lct_elems:
                 lct_val = get_text(lct_elems[0])
-                if not re.match(r'^(DDF|DDE|DMF|DME)', lct_val or ''):
+                if not re.match(r'^(DDF|DDE|DMF|DME)(-[IMRPT])?$', lct_val or ''):
                     r.error(f"LocalContractType='{lct_val}' invalide",
                             "Préfixe attendu : DDF, DDE, DMF ou DME (variantes -I, -R, -T acceptées)")
                 else:
